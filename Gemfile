@@ -1,5 +1,11 @@
 source "https://rubygems.org"
 
+unless File.respond_to?(:exists?)
+  File.define_singleton_method(:exists?) do |path|
+    File.exist?(path)
+  end
+end
+
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.0.2"
 # Use postgresql as the database for Active Record
