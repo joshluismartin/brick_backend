@@ -27,6 +27,7 @@ gem "devise-jwt"
 gem "rack-cors"
 gem "badgeable"
 gem "google-apis-calendar_v3"
+gem "jsonapi-serializer"
 
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
 gem "solid_cache"
