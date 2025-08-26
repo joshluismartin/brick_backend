@@ -25,9 +25,12 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "devise"
 gem "devise-jwt"
 gem "rack-cors"
-gem "badgeable"
+# gem "badgeable"  # Commented out - incompatible with Rails 8
 gem "google-apis-calendar_v3"
+
 gem "jsonapi-serializer"
+
+gem "rspotify"
 
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
 gem "solid_cache"
