@@ -30,7 +30,10 @@ gem "google-apis-calendar_v3"
 
 gem "jsonapi-serializer"
 
+# External API integrations
 gem "rspotify"
+gem "google-apis-calendar_v3"
+gem "sendgrid-ruby"
 
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
 gem "solid_cache"

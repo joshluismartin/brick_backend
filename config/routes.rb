@@ -80,6 +80,20 @@ Rails.application.routes.draw do
         end
       end
       
+      # Email notification routes
+      namespace :notifications do
+        post :habit_completion
+        post :milestone_progress
+        post :blueprint_completion
+        post :daily_summary
+        post :achievement_notification
+        post :habit_reminder
+        post :test_email
+        get :preferences
+        put :preferences, to: 'notifications#update_preferences'
+        get :history
+      end
+      
       # Future authentication routes (for when we add Devise)
       # post 'auth/sign_up', to: 'auth#sign_up'
       # post 'auth/sign_in', to: 'auth#sign_in'
