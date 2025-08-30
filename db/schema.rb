@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_26_050100) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_28_125400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -39,9 +39,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_26_050100) do
     t.text "description"
     t.date "target_date"
     t.string "status"
-    t.integer "user_id"
+    t.integer "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "category"
+    t.string "priority"
+    t.string "spotify_playlist_id"
+    t.index ["category"], name: "index_blueprints_on_category"
+    t.index ["priority"], name: "index_blueprints_on_priority"
+    t.index ["status"], name: "index_blueprints_on_status"
+    t.index ["user_id", "created_at"], name: "index_blueprints_on_user_id_and_created_at"
+    t.index ["user_id", "status"], name: "index_blueprints_on_user_id_and_status"
   end
 
   create_table "habits", force: :cascade do |t|
@@ -54,12 +62,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_26_050100) do
     t.bigint "milestone_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.string "calendar_event_id"
+    t.text "completion_history", default: [], array: true
+    t.index ["calendar_event_id"], name: "index_habits_on_calendar_event_id"
+    t.index ["completion_history"], name: "index_habits_on_completion_history", using: :gin
     t.index ["frequency"], name: "index_habits_on_frequency"
     t.index ["last_completed_at"], name: "index_habits_on_last_completed_at"
     t.index ["milestone_id", "frequency"], name: "index_habits_on_milestone_id_and_frequency"
     t.index ["milestone_id"], name: "index_habits_on_milestone_id"
     t.index ["priority"], name: "index_habits_on_priority"
     t.index ["status"], name: "index_habits_on_status"
+    t.index ["user_id", "created_at"], name: "index_habits_on_user_id_and_created_at"
+    t.index ["user_id", "frequency"], name: "index_habits_on_user_id_and_frequency"
+    t.index ["user_id", "status"], name: "index_habits_on_user_id_and_status"
+    t.index ["user_id"], name: "index_habits_on_user_id"
   end
 
   create_table "milestones", force: :cascade do |t|
@@ -71,16 +88,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_26_050100) do
     t.bigint "blueprint_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.string "calendar_event_id"
     t.index ["blueprint_id", "target_date"], name: "index_milestones_on_blueprint_id_and_target_date"
     t.index ["blueprint_id"], name: "index_milestones_on_blueprint_id"
+    t.index ["calendar_event_id"], name: "index_milestones_on_calendar_event_id"
     t.index ["priority"], name: "index_milestones_on_priority"
     t.index ["status"], name: "index_milestones_on_status"
     t.index ["target_date"], name: "index_milestones_on_target_date"
+    t.index ["user_id", "status"], name: "index_milestones_on_user_id_and_status"
+    t.index ["user_id", "target_date"], name: "index_milestones_on_user_id_and_target_date"
+    t.index ["user_id"], name: "index_milestones_on_user_id"
   end
 
   create_table "user_achievements", force: :cascade do |t|
     t.bigint "achievement_id", null: false
-    t.string "user_identifier"
     t.bigint "blueprint_id"
     t.bigint "milestone_id"
     t.bigint "habit_id"
@@ -90,14 +112,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_26_050100) do
     t.boolean "notified", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["achievement_id"], name: "index_user_achievements_on_achievement_id"
     t.index ["blueprint_id"], name: "index_user_achievements_on_blueprint_id"
     t.index ["earned_at"], name: "index_user_achievements_on_earned_at"
     t.index ["habit_id"], name: "index_user_achievements_on_habit_id"
     t.index ["milestone_id"], name: "index_user_achievements_on_milestone_id"
     t.index ["notified"], name: "index_user_achievements_on_notified"
-    t.index ["user_identifier", "achievement_id"], name: "index_user_achievements_on_user_identifier_and_achievement_id"
-    t.index ["user_identifier"], name: "index_user_achievements_on_user_identifier"
+    t.index ["user_id", "achievement_id"], name: "index_user_achievements_on_user_and_achievement", unique: true
+    t.index ["user_id", "earned_at"], name: "index_user_achievements_on_user_id_and_earned_at"
+    t.index ["user_id"], name: "index_user_achievements_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -114,10 +138,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_26_050100) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "blueprints", "users"
   add_foreign_key "habits", "milestones"
+  add_foreign_key "habits", "users"
   add_foreign_key "milestones", "blueprints"
+  add_foreign_key "milestones", "users"
   add_foreign_key "user_achievements", "achievements"
   add_foreign_key "user_achievements", "blueprints"
   add_foreign_key "user_achievements", "habits"
   add_foreign_key "user_achievements", "milestones"
+  add_foreign_key "user_achievements", "users"
 end

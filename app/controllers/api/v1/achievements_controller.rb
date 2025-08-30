@@ -1,5 +1,5 @@
 class Api::V1::AchievementsController < Api::V1::BaseController
-  before_action :set_user_identifier
+  before_action :set_user_id
   
   # GET /api/v1/achievements - Get all available achievements
   def index
@@ -7,7 +7,7 @@ class Api::V1::AchievementsController < Api::V1::BaseController
     
     # Add earned status for current user
     achievements_with_status = achievements.map do |achievement|
-      user_earned = achievement.user_achievements.where(user_identifier: @user_identifier).exists?
+      user_earned = achievement.user_achievements.where(user_id: current_user.id).exists?
       
       achievement.display_info.merge({
         earned: user_earned,
@@ -25,31 +25,50 @@ class Api::V1::AchievementsController < Api::V1::BaseController
 
   # GET /api/v1/achievements/user - Get user's earned achievements
   def user_achievements
-    user_achievements = UserAchievement.for_user(@user_identifier)
+    user_achievements = UserAchievement.for_user(current_user.id)
                                       .includes(:achievement, :blueprint, :milestone, :habit)
                                       .recent
     
     render_success({
       achievements: user_achievements.map(&:display_info),
-      stats: UserAchievement.stats_for_user(@user_identifier),
+      stats: UserAchievement.stats_for_user(current_user.id),
       total_count: user_achievements.count
     }, "User achievements retrieved successfully")
   end
 
   # GET /api/v1/achievements/stats - Get user achievement statistics
   def stats
-    stats = UserAchievement.stats_for_user(@user_identifier)
-    
-    # Add additional stats
-    total_possible = Achievement.active.count
-    completion_rate = total_possible > 0 ? (stats[:total_achievements].to_f / total_possible * 100).round(2) : 0
-    
-    render_success({
-      **stats,
-      completion_rate: completion_rate,
-      total_possible_achievements: total_possible,
-      user_rank: calculate_user_rank(@user_identifier)
-    }, "Achievement statistics retrieved successfully")
+    begin
+      stats = UserAchievement.stats_for_user(current_user.id)
+      
+      # Add additional stats
+      total_possible = Achievement.active.count
+      completion_rate = total_possible > 0 ? (stats[:total_achievements].to_f / total_possible * 100).round(2) : 0
+      
+      render_success({
+        **stats,
+        completion_rate: completion_rate,
+        total_possible_achievements: total_possible,
+        user_rank: calculate_user_rank(current_user.id)
+      }, "Achievement statistics retrieved successfully")
+    rescue => e
+      Rails.logger.error "Achievement stats error: #{e.message}"
+      Rails.logger.error "Backtrace: #{e.backtrace.join("\n")}"
+      
+      # Return empty stats to prevent dashboard failure
+      render_success({
+        total_achievements: 0,
+        total_points: 0,
+        by_rarity: {},
+        by_type: {},
+        recent_achievements: [],
+        streak_achievements: 0,
+        completion_achievements: 0,
+        completion_rate: 0,
+        total_possible_achievements: Achievement.active.count,
+        user_rank: 1
+      }, "Achievement statistics retrieved (with fallback)")
+    end
   end
 
   # GET /api/v1/achievements/leaderboard - Get achievement leaderboard
@@ -58,12 +77,12 @@ class Api::V1::AchievementsController < Api::V1::BaseController
     leaderboard = UserAchievement.leaderboard(limit)
     
     # Add current user's position if not in top list
-    user_position = find_user_position(@user_identifier)
+    user_position = find_user_position(current_user.id)
     
     render_success({
       leaderboard: leaderboard,
       user_position: user_position,
-      total_users: UserAchievement.select(:user_identifier).distinct.count
+      total_users: UserAchievement.select(:user_id).distinct.count
     }, "Achievement leaderboard retrieved successfully")
   end
 
@@ -75,13 +94,13 @@ class Api::V1::AchievementsController < Api::V1::BaseController
     case achievement_type
     when 'habit'
       habit = Habit.find(context[:habit_id])
-      earned = AchievementService.check_habit_achievements(@user_identifier, habit, context)
+      earned = AchievementService.check_habit_achievements(current_user.id, habit, context)
     when 'milestone'
       milestone = Milestone.find(context[:milestone_id])
-      earned = AchievementService.check_milestone_achievements(@user_identifier, milestone)
+      earned = AchievementService.check_milestone_achievements(current_user.id, milestone)
     when 'blueprint'
       blueprint = Blueprint.find(context[:blueprint_id])
-      earned = AchievementService.check_blueprint_achievements(@user_identifier, blueprint)
+      earned = AchievementService.check_blueprint_achievements(current_user.id, blueprint)
     else
       render_error("Invalid achievement type. Must be: habit, milestone, or blueprint", :bad_request)
       return
@@ -99,7 +118,7 @@ class Api::V1::AchievementsController < Api::V1::BaseController
   # GET /api/v1/achievements/progress - Get progress toward unearned achievements
   def progress
     all_achievements = Achievement.active
-    earned_achievement_ids = UserAchievement.for_user(@user_identifier).pluck(:achievement_id)
+    earned_achievement_ids = UserAchievement.for_user(current_user.id).pluck(:achievement_id)
     unearned_achievements = all_achievements.where.not(id: earned_achievement_ids)
     
     progress_data = unearned_achievements.map do |achievement|
@@ -133,13 +152,13 @@ class Api::V1::AchievementsController < Api::V1::BaseController
   def recent
     limit = params[:limit]&.to_i || 20
     recent_achievements = UserAchievement.recent
-                                        .includes(:achievement, :blueprint, :milestone, :habit)
+                                        .includes(:achievement, :blueprint, :milestone, :habit, :user)
                                         .limit(limit)
     
     # Anonymize user identifiers for privacy
     recent_data = recent_achievements.map do |ua|
       ua.display_info.merge({
-        user_identifier: "User#{ua.user_identifier.hash.abs % 1000}",
+        user_identifier: "User#{ua.user_id.hash.abs % 1000}",
         celebration_message: ua.celebration_message
       })
     end
@@ -162,7 +181,7 @@ class Api::V1::AchievementsController < Api::V1::BaseController
     
     # Add earned status for current user
     achievements_with_status = achievements.map do |achievement|
-      user_earned = achievement.user_achievements.where(user_identifier: @user_identifier).exists?
+      user_earned = achievement.user_achievements.where(user_id: current_user.id).exists?
       
       achievement.display_info.merge({
         earned: user_earned
@@ -178,27 +197,23 @@ class Api::V1::AchievementsController < Api::V1::BaseController
 
   private
 
-  def set_user_identifier
-    # For now, use a simple user identifier from headers or params
-    # In the future, this will come from authenticated user
-    @user_identifier = request.headers['X-User-Identifier'] || 
-                      params[:user_identifier] || 
-                      'demo_user'
+  def set_user_id
+    @user_id = current_user.id
   end
 
-  def calculate_user_rank(user_identifier)
-    user_points = UserAchievement.total_points_for_user(user_identifier)
+  def calculate_user_rank(user_id)
+    user_points = UserAchievement.total_points_for_user(User.find(user_id))
     users_with_more_points = UserAchievement.joins(:achievement)
-                                           .group(:user_identifier)
+                                           .group(:user_id)
                                            .having('SUM(achievements.points) > ?', user_points)
                                            .count
     
     users_with_more_points.length + 1
   end
 
-  def find_user_position(user_identifier)
+  def find_user_position(user_id)
     leaderboard = UserAchievement.leaderboard(1000) # Get extended leaderboard
-    position = leaderboard.find_index { |entry| entry[:user_identifier] == user_identifier }
+    position = leaderboard.find_index { |entry| entry[:user].id == user_id }
     
     if position
       {
@@ -209,8 +224,8 @@ class Api::V1::AchievementsController < Api::V1::BaseController
     else
       {
         rank: nil,
-        points: UserAchievement.total_points_for_user(user_identifier),
-        achievement_count: UserAchievement.for_user(user_identifier).count
+        points: UserAchievement.total_points_for_user(User.find(user_id)),
+        achievement_count: UserAchievement.for_user(user_id).count
       }
     end
   end
@@ -252,6 +267,6 @@ class Api::V1::AchievementsController < Api::V1::BaseController
   end
 
   def achievement_params
-    params.permit(:habit_id, :milestone_id, :blueprint_id, :completed_at, :days_since_last_completion, :user_identifier, :limit, :category, :type)
+    params.permit(:habit_id, :milestone_id, :blueprint_id, :completed_at, :days_since_last_completion, :limit, :category, :type)
   end
 end

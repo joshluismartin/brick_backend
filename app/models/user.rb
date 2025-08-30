@@ -5,6 +5,13 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable,
          :jwt_authenticatable, jwt_revocation_strategy: Devise::JWT::RevocationStrategies::Null
 
+  # Associations
+  has_many :blueprints, dependent: :destroy
+  has_many :milestones, dependent: :destroy
+  has_many :habits, dependent: :destroy
+  has_many :user_achievements, dependent: :destroy
+  has_many :achievements, through: :user_achievements
+
   def jwt_subject
     id
   end

@@ -8,14 +8,22 @@ class Api::V1::SessionsController < Devise::SessionsController
     if user&.valid_password?(params[:user][:password])
       sign_in(user)
       token = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil).first
-      response.headers['Authorization'] = "Bearer #{token}"
       render json: {
-        status: { code: 200, message: 'Logged in successfully.' },
-        data: UserSerializer.new(user).serializable_hash[:data][:attributes]
+        success: true,
+        message: 'Logged in successfully.',
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            created_at: user.created_at
+          },
+          token: token
+        }
       }
     else
       render json: {
-        status: { message: 'Invalid email or password.' }
+        success: false,
+        message: 'Invalid email or password.'
       }, status: :unauthorized
     end
   end
@@ -23,20 +31,35 @@ class Api::V1::SessionsController < Devise::SessionsController
   def destroy
     # Simple logout without JWT verification
     sign_out(current_user) if current_user
-    render json: { status: 200, message: 'Logged out successfully' }, status: :ok
+    render json: { 
+      success: true,
+      message: 'Logged out successfully' 
+    }, status: :ok
   end
 
   def respond_to_on_destroy
     # Override Devise's respond_to_on_destroy to avoid respond_to method error
-    render json: { status: 200, message: 'Logged out successfully' }, status: :ok
+    render json: { 
+      success: true,
+      message: 'Logged out successfully' 
+    }, status: :ok
   end
 
   private
 
   def respond_with(resource, _opts = {})
+    token = Warden::JWTAuth::UserEncoder.new.call(resource, :user, nil).first
     render json: {
-      status: { code: 200, message: 'Logged in successfully.' },
-      data: UserSerializer.new(resource).serializable_hash[:data][:attributes]
+      success: true,
+      message: 'Logged in successfully.',
+      data: {
+        user: {
+          id: resource.id,
+          email: resource.email,
+          created_at: resource.created_at
+        },
+        token: token
+      }
     }
   end
 end

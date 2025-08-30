@@ -9,13 +9,24 @@ class Api::V1::RegistrationsController < Devise::RegistrationsController
 
   def respond_with(resource, _opts = {})
     if resource.persisted?
+      # Generate JWT token for the new user
+      token = Warden::JWTAuth::UserEncoder.new.call(resource, :user, nil).first
       render json: {
-        status: { code: 200, message: 'Signed up successfully.' },
-        data: UserSerializer.new(resource).serializable_hash[:data][:attributes]
+        success: true,
+        message: 'Signed up successfully.',
+        data: {
+          user: {
+            id: resource.id,
+            email: resource.email,
+            created_at: resource.created_at
+          },
+          token: token
+        }
       }
     else
       render json: {
-        status: { message: "User couldn't be created successfully. #{resource.errors.full_messages.to_sentence}" }
+        success: false,
+        message: "User couldn't be created successfully. #{resource.errors.full_messages.to_sentence}"
       }, status: :unprocessable_entity
     end
   end

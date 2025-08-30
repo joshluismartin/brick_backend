@@ -1,5 +1,6 @@
 class Milestone < ApplicationRecord
   belongs_to :blueprint
+  belongs_to :user
   has_many :habits, dependent: :destroy
 
   validates :title, presence: true, length: { minimum: 3, maximum: 100 }

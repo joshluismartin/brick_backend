@@ -27,12 +27,10 @@ gem "devise-jwt"
 gem "rack-cors"
 # gem "badgeable"  # Commented out - incompatible with Rails 8
 gem "google-apis-calendar_v3"
-gem "rspotify"
 
 gem "jsonapi-serializer"
 
 # External API integrations
-gem "rspotify"
 gem "google-apis-calendar_v3"
 gem "sendgrid-ruby"
 

@@ -1,36 +1,38 @@
 class UserAchievement < ApplicationRecord
+  belongs_to :user
   belongs_to :achievement
   belongs_to :blueprint, optional: true
   belongs_to :milestone, optional: true
   belongs_to :habit, optional: true
   
-  validates :user_identifier, presence: true
   validates :earned_at, presence: true
   validates :achievement_id, uniqueness: { 
-    scope: [:user_identifier, :blueprint_id, :milestone_id, :habit_id],
+    scope: [:user_id, :blueprint_id, :milestone_id, :habit_id],
     message: "Achievement already earned for this context"
   }, unless: :repeatable_achievement?
   
-  scope :for_user, ->(user_id) { where(user_identifier: user_id) }
+  scope :for_user, ->(user_id) { where(user: user_id) }
   scope :recent, -> { order(earned_at: :desc) }
   scope :unnotified, -> { where(notified: false) }
   scope :by_achievement_type, ->(type) { joins(:achievement).where(achievements: { badge_type: type }) }
   scope :by_rarity, ->(rarity) { joins(:achievement).where(achievements: { rarity: rarity }) }
   
   # Get total points earned by user
-  def self.total_points_for_user(user_identifier)
+  def self.total_points_for_user(user)
     joins(:achievement)
-      .where(user_identifier: user_identifier)
+      .where(user: user)
       .sum('achievements.points')
   end
   
   # Get achievement stats for user
-  def self.stats_for_user(user_identifier)
-    user_achievements = for_user(user_identifier).includes(:achievement)
+  def self.stats_for_user(user_or_id)
+    user_id = user_or_id.is_a?(User) ? user_or_id.id : user_or_id
+    user_obj = user_or_id.is_a?(User) ? user_or_id : User.find(user_id)
+    user_achievements = for_user(user_id).includes(:achievement)
     
     {
       total_achievements: user_achievements.count,
-      total_points: total_points_for_user(user_identifier),
+      total_points: total_points_for_user(user_obj),
       by_rarity: user_achievements.joins(:achievement).group('achievements.rarity').count,
       by_type: user_achievements.joins(:achievement).group('achievements.badge_type').count,
       recent_achievements: user_achievements.recent.limit(5).map(&:display_info),
@@ -41,15 +43,15 @@ class UserAchievement < ApplicationRecord
   
   # Get leaderboard (top users by points)
   def self.leaderboard(limit = 10)
-    select(:user_identifier)
+    select(:user_id)
       .joins(:achievement)
-      .group(:user_identifier)
+      .group(:user_id)
       .order('SUM(achievements.points) DESC')
       .limit(limit)
       .sum('achievements.points')
       .map do |user_id, points|
         {
-          user_identifier: user_id,
+          user: User.find(user_id),
           total_points: points,
           achievement_count: for_user(user_id).count,
           latest_achievement: for_user(user_id).recent.first&.achievement&.name
