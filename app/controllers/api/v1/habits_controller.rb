@@ -94,14 +94,31 @@ class Api::V1::HabitsController < Api::V1::BaseController
 
   # POST /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits/:id/mark_completed
   def mark_completed
-    result = @habit.mark_completed!
+    # Mark habit as completed
+    @habit.update!(
+      status: 'completed',
+      last_completed_at: Time.current,
+      completion_history: (@habit.completion_history || []) + [Date.current.to_s]
+    )
+    
+    # Check for achievements
+    awarded_achievements = AchievementService.check_habit_achievements(current_user, @habit)
     
     render_success({
-      habit: result[:habit],
-      quote: result[:quote],
-      achievements: result[:achievements].map(&:display_info),
-      points_earned: result[:achievements].sum { |ua| ua.achievement.points }
-    }, "Habit marked as completed! ")
+      habit: @habit,
+      message: "Congratulations! You've completed your habit: #{@habit.title}",
+      achievements: awarded_achievements.map do |ua|
+        {
+          id: ua.achievement.id,
+          name: ua.achievement.name,
+          description: ua.achievement.description,
+          badge_type: ua.achievement.badge_type,
+          points: ua.achievement.points,
+          earned_at: ua.earned_at
+        }
+      end,
+      points_earned: awarded_achievements.sum { |ua| ua.achievement.points }
+    }, "Habit marked as completed!")
   rescue => e
     render_error("Failed to mark habit as completed: #{e.message}")
   end
