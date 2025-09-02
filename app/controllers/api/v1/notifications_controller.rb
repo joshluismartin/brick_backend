@@ -96,7 +96,7 @@ class Api::V1::NotificationsController < Api::V1::BaseController
       return
     end
     
-    achievements = current_user.user_achievements.includes(:achievement).where(id: achievement_ids)
+    achievements = Achievement.where(id: achievement_ids)
     
     if achievements.empty?
       render_error("No valid achievements found", :not_found)
@@ -110,7 +110,7 @@ class Api::V1::NotificationsController < Api::V1::BaseController
         email_sent: true,
         recipient: current_user.email,
         achievements_count: achievements.length,
-        total_points: achievements.sum { |a| a.achievement.points }
+        total_points: achievements.sum { |a| a.points }
       }, "Achievement notification email sent successfully")
     else
       render_error("Failed to send email: #{result[:error]}", :service_unavailable)
@@ -270,6 +270,10 @@ class Api::V1::NotificationsController < Api::V1::BaseController
   def get_user_habits(user)
     # Get habits that are due or overdue for the user
     user.habits.includes(milestone: :blueprint).where(status: 'active').limit(10)
+  end
+
+  def set_user_email
+    @user_email = current_user.email
   end
 
   def notification_params

@@ -142,21 +142,21 @@ class SendgridService
   def send_achievement_notification(user_email, achievements)
     return if achievements.empty?
     
-    total_points = achievements.sum { |a| a.achievement.points }
-    rarest_achievement = achievements.max_by { |a| a.achievement.difficulty_level }
+    total_points = achievements.sum(&:points)
+    rarest_achievement = achievements.max_by(&:difficulty_level)
     
     template_data = {
-      achievements: achievements.map(&:display_info),
+      achievements: achievements.map { |a| { name: a.name, description: a.description, points: a.points } },
       achievement_count: achievements.length,
       total_points: total_points,
-      rarest_achievement: rarest_achievement&.achievement&.name,
-      celebration_message: rarest_achievement&.celebration_message
+      rarest_achievement: rarest_achievement&.name,
+      celebration_message: "Congratulations on your achievements!"
     }
     
     subject = if achievements.length > 1
       "🏆 #{achievements.length} New Achievements Unlocked!"
     else
-      "🎖️ Achievement Unlocked: #{achievements.first.achievement.name}"
+      "🎖️ Achievement Unlocked: #{achievements.first.name}"
     end
     
     send_email(
@@ -203,10 +203,11 @@ class SendgridService
     )
   end
   
-  private
-  
   def send_email(to_email:, subject:, template_id:, template_data: {})
-    from = Email.new(email: 'noreply@brickgoals.com', name: 'BRICK Goal Achievement')
+    from_email = ENV['SENDGRID_FROM_EMAIL'] || 'noreply@brickgoals.com'
+    from_name = ENV['SENDGRID_FROM_NAME'] || 'BRICK Goal Achievement'
+    
+    from = Email.new(email: from_email, name: from_name)
     to = Email.new(email: to_email)
     
     # For now, send simple HTML email
@@ -231,6 +232,8 @@ class SendgridService
       { success: false, error: e.message }
     end
   end
+  
+  private
   
   def generate_html_content(template_id, data)
     case template_id

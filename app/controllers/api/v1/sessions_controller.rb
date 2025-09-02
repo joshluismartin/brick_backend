@@ -44,22 +44,4 @@ class Api::V1::SessionsController < Devise::SessionsController
       message: 'Logged out successfully' 
     }, status: :ok
   end
-
-  private
-
-  def respond_with(resource, _opts = {})
-    token = Warden::JWTAuth::UserEncoder.new.call(resource, :user, nil).first
-    render json: {
-      success: true,
-      message: 'Logged in successfully.',
-      data: {
-        user: {
-          id: resource.id,
-          email: resource.email,
-          created_at: resource.created_at
-        },
-        token: token
-      }
-    }
-  end
 end
