@@ -30,3 +30,6 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+
+# Ignore Google Calendar credentials (contains sensitive service account keys)
+/config/google_credentials.json

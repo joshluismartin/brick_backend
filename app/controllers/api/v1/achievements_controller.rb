@@ -94,25 +94,34 @@ class Api::V1::AchievementsController < Api::V1::BaseController
     case achievement_type
     when 'habit'
       habit = Habit.find(context[:habit_id])
-      earned = AchievementService.check_habit_achievements(current_user.id, habit, context)
+      earned = AchievementService.check_habit_achievements(current_user, habit)
     when 'milestone'
       milestone = Milestone.find(context[:milestone_id])
-      earned = AchievementService.check_milestone_achievements(current_user.id, milestone)
+      earned = AchievementService.check_milestone_achievements(current_user, milestone)
     when 'blueprint'
       blueprint = Blueprint.find(context[:blueprint_id])
-      earned = AchievementService.check_blueprint_achievements(current_user.id, blueprint)
+      earned = AchievementService.check_blueprint_achievements(current_user, blueprint)
     else
-      render_error("Invalid achievement type. Must be: habit, milestone, or blueprint", :bad_request)
-      return
+      return render_error("Invalid achievement type", :bad_request)
     end
     
     render_success({
-      newly_earned: earned.map(&:display_info),
-      count: earned.length,
-      total_points_earned: earned.sum { |ua| ua.achievement.points }
-    }, "Achievement check completed successfully")
+      achievements: earned.map do |ua|
+        {
+          id: ua.achievement.id,
+          name: ua.achievement.name,
+          description: ua.achievement.description,
+          badge_type: ua.achievement.badge_type,
+          points: ua.achievement.points,
+          earned_at: ua.earned_at
+        }
+      end,
+      total_points: earned.sum { |ua| ua.achievement.points }
+    }, "Achievements checked successfully")
   rescue ActiveRecord::RecordNotFound => e
     render_error("Record not found: #{e.message}", :not_found)
+  rescue => e
+    render_error("Error checking achievements: #{e.message}", :internal_server_error)
   end
 
   # GET /api/v1/achievements/progress - Get progress toward unearned achievements

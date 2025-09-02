@@ -82,22 +82,20 @@ Rails.application.routes.draw do
       end
 
       # Google Calendar integration routes
-      namespace :calendar do
-        get :events
-        get :sync_status
-        post :bulk_sync
-        
-        # Habit calendar events
-        post "habits/:habit_id/event", to: "calendar#create_habit_event"
-        post "habits/:habit_id/recurring_events", to: "calendar#create_recurring_habit_events"
-        
-        # Milestone calendar events
-        post "milestones/:milestone_id/event", to: "calendar#create_milestone_event"
-        
-        # Event management
-        put "events/:event_id", to: "calendar#update_event"
-        delete "events/:event_id", to: "calendar#delete_event"
-      end
+      get "calendar/events", to: "calendar#events"
+      get "calendar/sync_status", to: "calendar#sync_status"
+      post "calendar/bulk_sync", to: "calendar#bulk_sync"
+      
+      # Habit calendar events
+      post "calendar/habits/:habit_id/event", to: "calendar#create_habit_event"
+      post "calendar/habits/:habit_id/recurring_events", to: "calendar#create_recurring_habit_events"
+      
+      # Milestone calendar events
+      post "calendar/milestones/:milestone_id/event", to: "calendar#create_milestone_event"
+      
+      # Event management
+      put "calendar/events/:event_id", to: "calendar#update_event"
+      delete "calendar/events/:event_id", to: "calendar#delete_event"
     end
   end
 
