@@ -29,12 +29,23 @@ class AchievementService
       context_attributes[:habit] = context_object
     end
 
-    user_achievement = UserAchievement.create!(
+    # Use find_or_create_by with only the fields that have the unique constraint
+    user_achievement = UserAchievement.find_or_create_by(
       user: user,
-      achievement: achievement,
-      earned_at: Time.current,
-      **context_attributes
-    )
+      achievement: achievement
+    ) do |ua|
+      ua.earned_at = Time.current
+      # Set context attributes on creation
+      context_attributes.each { |key, value| ua.send("#{key}=", value) }
+    end
+
+    # If the record already existed, update context attributes if they're different
+    if context_attributes.any?
+      needs_update = context_attributes.any? { |key, value| user_achievement.send(key) != value }
+      if needs_update
+        user_achievement.update!(context_attributes)
+      end
+    end
 
     Rails.logger.info "Achievement awarded: #{achievement.name} to user #{user.id}"
     user_achievement

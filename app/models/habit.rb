@@ -5,7 +5,7 @@ class Habit < ApplicationRecord
   validates :title, presence: true, length: { minimum: 3, maximum: 100 }
   validates :description, length: { maximum: 500 }
   validates :frequency, inclusion: { in: %w[daily weekly monthly] }
-  validates :status, inclusion: { in: %w[pending in_progress completed] }
+  validates :status, inclusion: { in: %w[pending in_progress completed active] }
   validates :priority, inclusion: { in: %w[low medium high] }
 
   scope :by_priority, -> { order(Arel.sql("CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END")) }

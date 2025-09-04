@@ -75,6 +75,8 @@ class Api::V1::HabitsController < Api::V1::BaseController
         achievements: awarded_achievements.map(&:display_info)
       }, "Habit created successfully", :created)
     else
+      Rails.logger.error "Habit validation failed: #{@habit.errors.full_messages}"
+      Rails.logger.error "Habit attributes: #{@habit.attributes}"
       render_error(@habit.errors.full_messages.join(', '))
     end
   end
