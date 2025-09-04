@@ -74,7 +74,7 @@ class Api::V1::BlueprintsController < Api::V1::BaseController
   end
 
   def blueprint_params
-    params.require(:blueprint).permit(:title, :description, :priority, :category, :target_date)
+    params.require(:blueprint).permit(:title, :description, :priority, :category, :target_date, :status)
   end
 
   def blueprint_json(blueprint)
