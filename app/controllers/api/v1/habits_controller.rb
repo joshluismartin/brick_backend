@@ -105,32 +105,26 @@ class Api::V1::HabitsController < Api::V1::BaseController
   # POST /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits/:id/mark_completed
   # POST /api/v1/milestones/:milestone_id/habits/:id/mark_completed
   def mark_completed
-    # Mark habit as completed
-    @habit.update!(
-      status: 'completed',
-      last_completed_at: Time.current,
-      completion_history: (@habit.completion_history || []) + [Date.current.to_s]
-    )
+    Rails.logger.info "DEBUG: mark_completed called for habit #{@habit.id} by user #{current_user.id}"
+    Rails.logger.info "DEBUG: Habit before completion - title: #{@habit.title}, completion_history: #{@habit.completion_history}"
     
-    # Check for achievements
-    awarded_achievements = AchievementService.check_habit_achievements(current_user, @habit)
+    # Use the model's mark_completed! method which properly handles achievements
+    result = @habit.mark_completed!
+    
+    Rails.logger.info "DEBUG: mark_completed! result: #{result.keys}"
+    Rails.logger.info "DEBUG: Achievements awarded: #{result[:achievements]&.count || 0}"
     
     render_success({
-      habit: @habit,
-      message: "Congratulations! You've completed your habit: #{@habit.title}",
-      achievements: awarded_achievements.map do |ua|
-        {
-          id: ua.achievement.id,
-          name: ua.achievement.name,
-          description: ua.achievement.description,
-          badge_type: ua.achievement.badge_type,
-          points: ua.achievement.points,
-          earned_at: ua.earned_at
-        }
-      end,
-      points_earned: awarded_achievements.sum { |ua| ua.achievement.points }
+      habit: result[:habit],
+      message: result[:message],
+      achievements: result[:achievements],
+      points_earned: result[:points_earned],
+      current_streak: result[:current_streak],
+      completion_rate: result[:completion_rate]
     }, "Habit marked as completed!")
   rescue => e
+    Rails.logger.error "ERROR in mark_completed: #{e.message}"
+    Rails.logger.error "ERROR backtrace: #{e.backtrace.first(5)}"
     render_error("Failed to mark habit as completed: #{e.message}")
   end
 

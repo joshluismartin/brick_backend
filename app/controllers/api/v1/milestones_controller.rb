@@ -80,18 +80,15 @@ class Api::V1::MilestonesController < Api::V1::BaseController
   # PATCH/PUT /api/v1/milestones/:id
   def update
     if @milestone.update(milestone_params)
-      # Check for achievements if milestone progress changed significantly
-      awarded_achievements = []
-      if @milestone.progress_percentage_previously_changed?
-        awarded_achievements = AchievementService.check_milestone_achievements(current_user, @milestone)
-      end
+      # Check for milestone progress achievements after update
+      awarded_achievements = AchievementService.check_milestone_achievements(current_user, @milestone)
       
       render_success({
-        milestone: @milestone,
+        milestone: milestone_json(@milestone),
         achievements: awarded_achievements.map(&:display_info)
       }, "Milestone updated successfully")
     else
-      render_error(@milestone.errors.full_messages.join(', '))
+      render_error("Failed to update milestone: #{@milestone.errors.full_messages.join(', ')}", :unprocessable_entity)
     end
   end
 
@@ -111,7 +108,7 @@ class Api::V1::MilestonesController < Api::V1::BaseController
       render_success({
         milestone: @milestone,
         achievements: awarded_achievements.map(&:display_info)
-      }, "Milestone completed successfully! 🎉")
+      }, "Milestone completed successfully! ")
     else
       render_error(@milestone.errors.full_messages.join(', '))
     end

@@ -51,15 +51,28 @@ Rails.application.routes.draw do
       end
 
       # Standalone habits routes for direct access
-      resources :habits, only: [:show, :update, :destroy]
+      resources :habits, except: [:index] do
+        member do
+          post :mark_completed
+          post :reset
+        end
+      end
+      resources :habits, only: [:show, :update, :destroy] do
+        member do
+          post :mark_completed
+          post :reset
+        end
+      end
 
       # Achievement/Badge system routes
       resources :achievements, only: [ :index ] do
         collection do
+          get :user, to: "achievements#user_achievements"
           get :stats
           get :leaderboard
           get :progress
           get :recent
+          get :debug
           post :award
           post :seed
           post "check/:type", to: "achievements#check_achievements"
