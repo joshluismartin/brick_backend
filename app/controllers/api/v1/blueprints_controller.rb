@@ -5,7 +5,7 @@ class Api::V1::BlueprintsController < Api::V1::BaseController
   def index
     blueprints = current_user.blueprints.includes(:milestones, :user)
     
-    render_success("Blueprints loaded successfully", {
+    render_success({
       blueprints: blueprints.map do |blueprint|
         {
           id: blueprint.id,
@@ -22,22 +22,22 @@ class Api::V1::BlueprintsController < Api::V1::BaseController
         }
       end,
       total_count: blueprints.count
-    })
+    }, "Blueprints loaded successfully")
   end
 
   def show
-    render_success("Blueprint loaded successfully", {
+    render_success({
       blueprint: blueprint_json(@blueprint)
-    })
+    }, "Blueprint loaded successfully")
   end
 
   def create
     blueprint = current_user.blueprints.build(blueprint_params)
     
     if blueprint.save
-      render_success("Blueprint created successfully", {
+      render_success({
         blueprint: blueprint_json(blueprint)
-      }, :created)
+      }, "Blueprint created successfully", :created)
     else
       render_error("Failed to create blueprint: #{blueprint.errors.full_messages.join(', ')}", :unprocessable_entity)
     end
@@ -45,9 +45,9 @@ class Api::V1::BlueprintsController < Api::V1::BaseController
 
   def update
     if @blueprint.update(blueprint_params)
-      render_success("Blueprint updated successfully", {
+      render_success({
         blueprint: blueprint_json(@blueprint)
-      })
+      }, "Blueprint updated successfully")
     else
       render_error("Failed to update blueprint: #{@blueprint.errors.full_messages.join(', ')}", :unprocessable_entity)
     end
@@ -55,14 +55,14 @@ class Api::V1::BlueprintsController < Api::V1::BaseController
 
   def destroy
     @blueprint.destroy
-    render_success("Blueprint deleted successfully")
+    render_success({}, "Blueprint deleted successfully")
   end
 
   def complete
     @blueprint.update(status: 'completed', completed_at: Time.current)
-    render_success("Blueprint marked as completed", {
+    render_success({
       blueprint: blueprint_json(@blueprint)
-    })
+    }, "Blueprint marked as completed")
   end
 
   private
