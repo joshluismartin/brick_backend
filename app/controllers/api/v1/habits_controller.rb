@@ -1,8 +1,9 @@
 class Api::V1::HabitsController < Api::V1::BaseController
-  before_action :set_blueprint_and_milestone
+  before_action :set_blueprint_and_milestone, only: [:index, :create]
   before_action :set_habit, only: [:show, :update, :destroy, :mark_completed, :reset]
 
   # GET /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits
+  # GET /api/v1/milestones/:milestone_id/habits
   def index
     @habits = @milestone.habits.includes(:milestone, milestone: :blueprint)
     
@@ -25,14 +26,16 @@ class Api::V1::HabitsController < Api::V1::BaseController
         title: @milestone.title
       },
       blueprint: {
-        id: @blueprint.id,
-        title: @blueprint.title
+        id: @milestone.blueprint.id,
+        title: @milestone.blueprint.title
       },
       total_count: @habits.count
     })
   end
 
   # GET /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits/:id
+  # GET /api/v1/milestones/:milestone_id/habits/:id
+  # GET /api/v1/habits/:id
   def show
     render_success({
       habit: {
@@ -44,12 +47,12 @@ class Api::V1::HabitsController < Api::V1::BaseController
         current_streak: @habit.current_streak,
         last_completed_at: @habit.last_completed_at,
         milestone: {
-          id: @milestone.id,
-          title: @milestone.title
+          id: @habit.milestone.id,
+          title: @habit.milestone.title
         },
         blueprint: {
-          id: @blueprint.id,
-          title: @blueprint.title
+          id: @habit.milestone.blueprint.id,
+          title: @habit.milestone.blueprint.title
         },
         created_at: @habit.created_at,
         updated_at: @habit.updated_at
@@ -58,6 +61,7 @@ class Api::V1::HabitsController < Api::V1::BaseController
   end
 
   # POST /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits
+  # POST /api/v1/milestones/:milestone_id/habits
   def create
     @habit = @milestone.habits.build(habit_params)
     @habit.user = current_user
@@ -76,6 +80,8 @@ class Api::V1::HabitsController < Api::V1::BaseController
   end
 
   # PATCH/PUT /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits/:id
+  # PATCH/PUT /api/v1/milestones/:milestone_id/habits/:id
+  # PATCH/PUT /api/v1/habits/:id
   def update
     if @habit.update(habit_params)
       render_success({
@@ -87,12 +93,15 @@ class Api::V1::HabitsController < Api::V1::BaseController
   end
 
   # DELETE /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits/:id
+  # DELETE /api/v1/milestones/:milestone_id/habits/:id
+  # DELETE /api/v1/habits/:id
   def destroy
     @habit.destroy
     render_success({}, "Habit deleted successfully")
   end
 
   # POST /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits/:id/mark_completed
+  # POST /api/v1/milestones/:milestone_id/habits/:id/mark_completed
   def mark_completed
     # Mark habit as completed
     @habit.update!(
@@ -124,6 +133,7 @@ class Api::V1::HabitsController < Api::V1::BaseController
   end
 
   # POST /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits/:id/reset
+  # POST /api/v1/milestones/:milestone_id/habits/:id/reset
   def reset
     @habit.update!(status: 'active', last_completed_at: nil, current_streak: 0)
     
@@ -137,16 +147,38 @@ class Api::V1::HabitsController < Api::V1::BaseController
   private
 
   def set_blueprint_and_milestone
-    @blueprint = current_user.blueprints.find(params[:blueprint_id])
-    @milestone = @blueprint.milestones.find(params[:milestone_id])
+    if params[:blueprint_id].present?
+      # Nested route: /blueprints/:blueprint_id/milestones/:milestone_id/habits
+      @blueprint = current_user.blueprints.find(params[:blueprint_id])
+      @milestone = @blueprint.milestones.find(params[:milestone_id])
+    else
+      # Standalone route: /milestones/:milestone_id/habits
+      @milestone = current_user.milestones.find(params[:milestone_id])
+      @blueprint = @milestone.blueprint
+    end
   rescue ActiveRecord::RecordNotFound => e
-    render_error("Blueprint or Milestone not found", :not_found)
+    if params[:blueprint_id].present?
+      render_error("Blueprint or Milestone not found", :not_found)
+    else
+      render_error("Milestone not found", :not_found)
+    end
   end
 
   def set_habit
-    @habit = @milestone.habits.find(params[:id])
+    if params[:milestone_id].present?
+      # Route with milestone: /milestones/:milestone_id/habits/:id or /blueprints/.../milestones/.../habits/:id
+      set_blueprint_and_milestone unless @milestone
+      @habit = @milestone.habits.find(params[:id])
+    else
+      # Standalone route: /habits/:id
+      @habit = current_user.habits.find(params[:id])
+    end
   rescue ActiveRecord::RecordNotFound
-    render_error("Habit not found", :not_found)
+    if params[:milestone_id].present?
+      render_error("Milestone or habit not found", :not_found)
+    else
+      render_error("Habit not found", :not_found)
+    end
   end
 
   def habit_params
