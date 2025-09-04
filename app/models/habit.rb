@@ -1,6 +1,7 @@
 class Habit < ApplicationRecord
   belongs_to :milestone
   belongs_to :user
+  has_many :user_achievements, dependent: :destroy
 
   validates :title, presence: true, length: { minimum: 3, maximum: 100 }
   validates :description, length: { maximum: 500 }

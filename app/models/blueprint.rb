@@ -2,6 +2,7 @@ class Blueprint < ApplicationRecord
   belongs_to :user
   has_many :milestones, dependent: :destroy
   has_many :habits, through: :milestones
+  has_many :user_achievements, dependent: :destroy
 
   # Temporarily comment out validations to debug the issue
   # validates :title, presence: true, length: { minimum: 3, maximum: 100 }
