@@ -182,6 +182,6 @@ class Api::V1::HabitsController < Api::V1::BaseController
   end
 
   def habit_params
-    params.require(:habit).permit(:title, :description, :frequency, :status)
+    params.require(:habit).permit(:title, :description, :frequency, :status, :priority)
   end
 end
