@@ -50,6 +50,9 @@ Rails.application.routes.draw do
         end
       end
 
+      # Standalone habits routes for direct access
+      resources :habits, only: [:show, :update, :destroy]
+
       # Achievement/Badge system routes
       resources :achievements, only: [ :index ] do
         collection do
