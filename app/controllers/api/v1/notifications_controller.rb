@@ -3,22 +3,22 @@ class Api::V1::NotificationsController < Api::V1::BaseController
   
   # POST /api/v1/notifications/habit_completion - Send habit completion email
   def habit_completion
-    habit = Habit.find(params[:habit_id])
+    habit = current_user.habits.find(params[:habit_id])
     achievements = params[:achievements] || []
     
     # Convert achievement IDs to objects if provided
     achievement_objects = if achievements.any?
-      UserAchievement.includes(:achievement).where(id: achievements)
+      current_user.user_achievements.includes(:achievement).where(id: achievements)
     else
       []
     end
     
-    result = SendgridService.send_habit_completion_email(@user_email, habit, achievement_objects)
+    result = SendgridService.send_habit_completion_email(current_user.email, habit, achievement_objects)
     
     if result[:success]
       render_success({
         email_sent: true,
-        recipient: @user_email,
+        recipient: current_user.email,
         subject: "🎉 Habit Completed: #{habit.title}",
         achievements_included: achievement_objects.length
       }, "Habit completion email sent successfully")
@@ -31,14 +31,14 @@ class Api::V1::NotificationsController < Api::V1::BaseController
 
   # POST /api/v1/notifications/milestone_progress - Send milestone progress email
   def milestone_progress
-    milestone = Milestone.find(params[:milestone_id])
+    milestone = current_user.milestones.find(params[:milestone_id])
     
-    result = SendgridService.send_milestone_progress_email(@user_email, milestone)
+    result = SendgridService.send_milestone_progress_email(current_user.email, milestone)
     
     if result[:success]
       render_success({
         email_sent: true,
-        recipient: @user_email,
+        recipient: current_user.email,
         milestone: milestone.title,
         progress: milestone.progress_percentage.round(1)
       }, "Milestone progress email sent successfully")
@@ -51,14 +51,14 @@ class Api::V1::NotificationsController < Api::V1::BaseController
 
   # POST /api/v1/notifications/blueprint_completion - Send blueprint completion email
   def blueprint_completion
-    blueprint = Blueprint.find(params[:blueprint_id])
+    blueprint = current_user.blueprints.find(params[:blueprint_id])
     
-    result = SendgridService.send_blueprint_completion_email(@user_email, blueprint)
+    result = SendgridService.send_blueprint_completion_email(current_user.email, blueprint)
     
     if result[:success]
       render_success({
         email_sent: true,
-        recipient: @user_email,
+        recipient: current_user.email,
         blueprint: blueprint.title,
         completed_early: blueprint.target_date > Date.current
       }, "Blueprint completion email sent successfully")
@@ -71,17 +71,15 @@ class Api::V1::NotificationsController < Api::V1::BaseController
 
   # POST /api/v1/notifications/daily_summary - Send daily summary email
   def daily_summary
-    user_identifier = params[:user_identifier] || 'demo_user'
+    # Calculate daily summary data for current user
+    summary_data = calculate_daily_summary(current_user)
     
-    # Calculate daily summary data
-    summary_data = calculate_daily_summary(user_identifier)
-    
-    result = SendgridService.send_daily_summary_email(@user_email, summary_data)
+    result = SendgridService.send_daily_summary_email(current_user.email, summary_data)
     
     if result[:success]
       render_success({
         email_sent: true,
-        recipient: @user_email,
+        recipient: current_user.email,
         summary: summary_data
       }, "Daily summary email sent successfully")
     else
@@ -98,21 +96,21 @@ class Api::V1::NotificationsController < Api::V1::BaseController
       return
     end
     
-    achievements = UserAchievement.includes(:achievement).where(id: achievement_ids)
+    achievements = Achievement.where(id: achievement_ids)
     
     if achievements.empty?
       render_error("No valid achievements found", :not_found)
       return
     end
     
-    result = SendgridService.send_achievement_notification(@user_email, achievements)
+    result = SendgridService.send_achievement_notification(current_user.email, achievements)
     
     if result[:success]
       render_success({
         email_sent: true,
-        recipient: @user_email,
+        recipient: current_user.email,
         achievements_count: achievements.length,
-        total_points: achievements.sum { |a| a.achievement.points }
+        total_points: achievements.sum { |a| a.points }
       }, "Achievement notification email sent successfully")
     else
       render_error("Failed to send email: #{result[:error]}", :service_unavailable)
@@ -121,18 +119,15 @@ class Api::V1::NotificationsController < Api::V1::BaseController
 
   # POST /api/v1/notifications/habit_reminder - Send habit reminder email
   def habit_reminder
-    user_identifier = params[:user_identifier] || 'demo_user'
-    
-    # Get habits due today and overdue habits
-    # For demo purposes, we'll use all active habits
-    habits = get_user_habits(user_identifier)
+    # Get habits due today and overdue habits for current user
+    habits = get_user_habits(current_user)
     
     if habits.empty?
       render_error("No habits found for reminders", :not_found)
       return
     end
     
-    result = SendgridService.send_habit_reminder(@user_email, habits)
+    result = SendgridService.send_habit_reminder(current_user.email, habits)
     
     if result[:success]
       overdue_count = habits.count(&:overdue?)
@@ -140,7 +135,7 @@ class Api::V1::NotificationsController < Api::V1::BaseController
       
       render_success({
         email_sent: true,
-        recipient: @user_email,
+        recipient: current_user.email,
         habits_due_today: due_today_count,
         overdue_habits: overdue_count,
         total_habits: habits.length
@@ -155,11 +150,12 @@ class Api::V1::NotificationsController < Api::V1::BaseController
     template_data = {
       message: "This is a test email from BRICK Goal Achievement API",
       timestamp: Time.current.strftime("%B %d, %Y at %I:%M %p"),
-      user_email: @user_email
+      user_email: current_user.email,
+      user_name: current_user.email.split('@').first.capitalize
     }
     
     result = SendgridService.new.send_email(
-      to_email: @user_email,
+      to_email: current_user.email,
       subject: "🧪 Test Email from BRICK",
       template_id: 'basic',
       template_data: template_data
@@ -168,7 +164,7 @@ class Api::V1::NotificationsController < Api::V1::BaseController
     if result[:success]
       render_success({
         email_sent: true,
-        recipient: @user_email,
+        recipient: current_user.email,
         test_mode: true
       }, "Test email sent successfully")
     else
@@ -179,7 +175,7 @@ class Api::V1::NotificationsController < Api::V1::BaseController
   # GET /api/v1/notifications/preferences - Get user notification preferences
   def preferences
     # For now, return default preferences
-    # In the future, this would be stored per user
+    # In the future, this would be stored per user in the database
     preferences = {
       habit_completion: true,
       milestone_progress: true,
@@ -194,7 +190,7 @@ class Api::V1::NotificationsController < Api::V1::BaseController
     
     render_success({
       preferences: preferences,
-      user_email: @user_email
+      user_email: current_user.email
     }, "Notification preferences retrieved successfully")
   end
 
@@ -206,7 +202,7 @@ class Api::V1::NotificationsController < Api::V1::BaseController
     
     render_success({
       preferences: updated_preferences,
-      user_email: @user_email,
+      user_email: current_user.email,
       updated_at: Time.current
     }, "Notification preferences updated successfully")
   end
@@ -242,52 +238,50 @@ class Api::V1::NotificationsController < Api::V1::BaseController
     render_success({
       history: history,
       total_count: history.length,
-      user_email: @user_email
+      user_email: current_user.email
     }, "Email history retrieved successfully")
   end
 
   private
 
-  def set_user_email
-    # For now, use email from params or headers
-    # In the future, this will come from authenticated user
-    @user_email = params[:user_email] || 
-                  request.headers['X-User-Email'] || 
-                  'demo@brickgoals.com'
-    
-    # Basic email validation
-    unless @user_email.match?(/\A[\w+\-.]+@[a-z\d\-]+(\.[a-z\d\-]+)*\.[a-z]+\z/i)
-      render_error("Invalid email address", :bad_request)
-      return
-    end
-  end
-
-  def calculate_daily_summary(user_identifier)
-    # Mock daily summary calculation
-    # In a real app, you'd calculate this from actual user data
+  def calculate_daily_summary(user)
+    # Calculate real daily summary data from user's actual data
     {
-      habits_completed: rand(0..5),
-      habits_due: rand(3..8),
-      completion_rate: rand(60..100),
-      points_earned: rand(10..50),
-      achievements_earned: [],
-      active_blueprints: rand(1..3),
-      overdue_habits: rand(0..2)
+      habits_completed: user.habits.where(status: 'completed', last_completed_at: Date.current.all_day).count,
+      habits_due: user.habits.where(status: 'active').count,
+      completion_rate: calculate_completion_rate(user),
+      points_earned: UserAchievement.where(user: user, earned_at: Date.current.all_day)
+                                   .joins(:achievement)
+                                   .sum('achievements.points'),
+      achievements_earned: user.user_achievements.where(earned_at: Date.current.all_day).count,
+      active_blueprints: user.blueprints.where(status: ['not_started', 'in_progress']).count,
+      overdue_habits: user.habits.select(&:overdue?).count
     }
   end
 
-  def get_user_habits(user_identifier)
-    # For demo purposes, get some sample habits
-    # In a real app, you'd filter by user
-    Habit.includes(milestone: :blueprint).limit(5)
+  def calculate_completion_rate(user)
+    total_habits = user.habits.count
+    return 0 if total_habits.zero?
+    
+    completed_today = user.habits.where(status: 'completed', last_completed_at: Date.current.all_day).count
+    (completed_today.to_f / total_habits * 100).round(1)
+  end
+
+  def get_user_habits(user)
+    # Get habits that are due or overdue for the user
+    user.habits.includes(milestone: :blueprint).where(status: 'active').limit(10)
+  end
+
+  def set_user_email
+    @user_email = current_user.email
   end
 
   def notification_params
     params.permit(
       :habit_completion, :milestone_progress, :blueprint_completion,
       :daily_summary, :achievement_notifications, :habit_reminders,
-      :email_frequency, :reminder_time, :summary_time, :user_email,
-      :habit_id, :milestone_id, :blueprint_id, :user_identifier,
+      :email_frequency, :reminder_time, :summary_time,
+      :habit_id, :milestone_id, :blueprint_id,
       achievement_ids: []
     )
   end

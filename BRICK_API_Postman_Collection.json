@@ -1,0 +1,555 @@
+{
+  "info": {
+    "name": "BRICK Goal Tracker API",
+    "description": "Complete API collection for BRICK backend with Google Calendar, SendGrid, and Achievement system",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Sign Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": {\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/sign_up",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sign_up"]
+            }
+          }
+        },
+        {
+          "name": "Sign In",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.token);",
+                  "    console.log('JWT token saved:', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": {\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/sign_in",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sign_in"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Blueprints",
+      "item": [
+        {
+          "name": "Create Blueprint",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blueprint\": {\n    \"title\": \"Fitness Goals\",\n    \"description\": \"Get healthy and fit\",\n    \"priority\": \"high\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/blueprints",
+              "host": ["{{base_url}}"],
+              "path": ["blueprints"]
+            }
+          }
+        },
+        {
+          "name": "Get All Blueprints",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/blueprints",
+              "host": ["{{base_url}}"],
+              "path": ["blueprints"]
+            }
+          }
+        },
+        {
+          "name": "Get Blueprint by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/blueprints/1",
+              "host": ["{{base_url}}"],
+              "path": ["blueprints", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Milestones",
+      "item": [
+        {
+          "name": "Create Milestone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"milestone\": {\n    \"title\": \"Lose 10 pounds\",\n    \"description\": \"Reach target weight\",\n    \"blueprint_id\": 1,\n    \"priority\": \"high\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/milestones",
+              "host": ["{{base_url}}"],
+              "path": ["milestones"]
+            }
+          }
+        },
+        {
+          "name": "Get All Milestones",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/milestones",
+              "host": ["{{base_url}}"],
+              "path": ["milestones"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Habits",
+      "item": [
+        {
+          "name": "Create Habit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"habit\": {\n    \"title\": \"Morning Run\",\n    \"description\": \"30 minute jog\",\n    \"milestone_id\": 1,\n    \"frequency\": \"daily\",\n    \"priority\": \"high\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/habits",
+              "host": ["{{base_url}}"],
+              "path": ["habits"]
+            }
+          }
+        },
+        {
+          "name": "Get All Habits",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/habits",
+              "host": ["{{base_url}}"],
+              "path": ["habits"]
+            }
+          }
+        },
+        {
+          "name": "Complete Habit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"completed_at\": \"2025-08-30T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/habits/1/complete",
+              "host": ["{{base_url}}"],
+              "path": ["habits", "1", "complete"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Achievements",
+      "item": [
+        {
+          "name": "Seed Default Achievements",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/achievements/seed",
+              "host": ["{{base_url}}"],
+              "path": ["achievements", "seed"]
+            }
+          }
+        },
+        {
+          "name": "Get All Achievements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/achievements",
+              "host": ["{{base_url}}"],
+              "path": ["achievements"]
+            }
+          }
+        },
+        {
+          "name": "Get User Achievements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/achievements/user",
+              "host": ["{{base_url}}"],
+              "path": ["achievements", "user"]
+            }
+          }
+        },
+        {
+          "name": "Get Achievement Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/achievements/stats",
+              "host": ["{{base_url}}"],
+              "path": ["achievements", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Achievement Progress",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/achievements/progress",
+              "host": ["{{base_url}}"],
+              "path": ["achievements", "progress"]
+            }
+          }
+        },
+        {
+          "name": "Get Leaderboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/achievements/leaderboard",
+              "host": ["{{base_url}}"],
+              "path": ["achievements", "leaderboard"]
+            }
+          }
+        },
+        {
+          "name": "Check Habit Achievements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"habit_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/achievements/check/habit",
+              "host": ["{{base_url}}"],
+              "path": ["achievements", "check", "habit"]
+            }
+          }
+        },
+        {
+          "name": "Check Milestone Achievements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"milestone_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/achievements/check/milestone",
+              "host": ["{{base_url}}"],
+              "path": ["achievements", "check", "milestone"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Google Calendar",
+      "item": [
+        {
+          "name": "Create Habit Calendar Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start_time\": \"2025-08-31T07:00:00Z\",\n  \"end_time\": \"2025-08-31T08:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/calendar/habits/1/event",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "habits", "1", "event"]
+            }
+          }
+        },
+        {
+          "name": "Create Recurring Habit Events",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start_date\": \"2025-08-30\",\n  \"end_date\": \"2025-09-30\",\n  \"time_of_day\": \"07:00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/calendar/habits/1/recurring_events",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "habits", "1", "recurring_events"]
+            }
+          }
+        },
+        {
+          "name": "Create Milestone Calendar Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"due_date\": \"2025-09-15\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/calendar/milestones/1/event",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "milestones", "1", "event"]
+            }
+          }
+        },
+        {
+          "name": "Get Calendar Events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/calendar/events?days_ahead=7",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "events"],
+              "query": [
+                {
+                  "key": "days_ahead",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk Sync Calendar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sync_habits\": true,\n  \"sync_milestones\": true,\n  \"default_time\": \"09:00\",\n  \"days_ahead\": 30\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/calendar/bulk_sync",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "bulk_sync"]
+            }
+          }
+        },
+        {
+          "name": "Get Sync Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/calendar/sync_status",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "sync_status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Email Notifications",
+      "item": [
+        {
+          "name": "Send Habit Completion Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"habit_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/notifications/habit_completion",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "habit_completion"]
+            }
+          }
+        },
+        {
+          "name": "Send Milestone Progress Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"milestone_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/notifications/milestone_progress",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "milestone_progress"]
+            }
+          }
+        },
+        {
+          "name": "Send Achievement Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"achievement_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/notifications/achievement_notification",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "achievement_notification"]
+            }
+          }
+        },
+        {
+          "name": "Send Daily Summary",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/notifications/daily_summary",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "daily_summary"]
+            }
+          }
+        },
+        {
+          "name": "Send Test Email",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/notifications/test_email",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "test_email"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

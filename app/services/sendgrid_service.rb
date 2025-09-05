@@ -41,16 +41,11 @@ class SendgridService
     milestone = habit.milestone
     blueprint = milestone.blueprint
     
-    # Get motivational quote
-    quote = QuotableService.completion_celebration_quote
-    
     template_data = {
       habit_title: habit.title,
       milestone_title: milestone.title,
       blueprint_title: blueprint.title,
       completion_time: Time.current.strftime("%B %d, %Y at %I:%M %p"),
-      quote_content: quote[:content],
-      quote_author: quote[:author],
       achievements: achievements.map(&:display_info),
       total_points: achievements.sum { |a| a.achievement.points },
       progress_percentage: milestone.progress_percentage.round(1)
@@ -133,7 +128,7 @@ class SendgridService
       achievements_earned: summary_data[:achievements_earned] || [],
       active_blueprints: summary_data[:active_blueprints] || 0,
       overdue_habits: summary_data[:overdue_habits] || 0,
-      motivational_quote: QuotableService.daily_motivation
+      motivational_quote: "Believe you can and you're halfway there." # default quote
     }
     
     send_email(
@@ -147,21 +142,21 @@ class SendgridService
   def send_achievement_notification(user_email, achievements)
     return if achievements.empty?
     
-    total_points = achievements.sum { |a| a.achievement.points }
-    rarest_achievement = achievements.max_by { |a| a.achievement.difficulty_level }
+    total_points = achievements.sum(&:points)
+    rarest_achievement = achievements.max_by(&:difficulty_level)
     
     template_data = {
-      achievements: achievements.map(&:display_info),
+      achievements: achievements.map { |a| { name: a.name, description: a.description, points: a.points } },
       achievement_count: achievements.length,
       total_points: total_points,
-      rarest_achievement: rarest_achievement&.achievement&.name,
-      celebration_message: rarest_achievement&.celebration_message
+      rarest_achievement: rarest_achievement&.name,
+      celebration_message: "Congratulations on your achievements!"
     }
     
     subject = if achievements.length > 1
       "🏆 #{achievements.length} New Achievements Unlocked!"
     else
-      "🎖️ Achievement Unlocked: #{achievements.first.achievement.name}"
+      "🎖️ Achievement Unlocked: #{achievements.first.name}"
     end
     
     send_email(
@@ -191,7 +186,7 @@ class SendgridService
         milestone: h.milestone.title
       }},
       total_habits: habits.length,
-      motivational_quote: QuotableService.daily_motivation
+      motivational_quote: "Believe you can and you're halfway there." # default quote
     }
     
     subject = if overdue_habits.any?
@@ -208,10 +203,11 @@ class SendgridService
     )
   end
   
-  private
-  
   def send_email(to_email:, subject:, template_id:, template_data: {})
-    from = Email.new(email: 'noreply@brickgoals.com', name: 'BRICK Goal Achievement')
+    from_email = ENV['SENDGRID_FROM_EMAIL'] || 'noreply@brickgoals.com'
+    from_name = ENV['SENDGRID_FROM_NAME'] || 'BRICK Goal Achievement'
+    
+    from = Email.new(email: from_email, name: from_name)
     to = Email.new(email: to_email)
     
     # For now, send simple HTML email
@@ -236,6 +232,8 @@ class SendgridService
       { success: false, error: e.message }
     end
   end
+  
+  private
   
   def generate_html_content(template_id, data)
     case template_id
@@ -274,9 +272,9 @@ class SendgridService
         <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <h4 style="color: #1976d2; margin: 0 0 10px 0;">💬 Motivational Quote</h4>
           <blockquote style="font-style: italic; margin: 0; color: #555;">
-            "#{data[:quote_content]}"
+            "Believe you can and you're halfway there."
           </blockquote>
-          <p style="text-align: right; color: #777; margin: 10px 0 0 0;">— #{data[:quote_author]}</p>
+          <p style="text-align: right; color: #777; margin: 10px 0 0 0;">— Theodore Roosevelt</p>
         </div>
         
         <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -412,9 +410,9 @@ class SendgridService
         <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <h4 style="color: #1976d2; margin: 0 0 10px 0;">💬 Daily Motivation</h4>
           <blockquote style="font-style: italic; margin: 0; color: #555;">
-            "#{data[:motivational_quote][:content]}"
+            "Believe you can and you're halfway there."
           </blockquote>
-          <p style="text-align: right; color: #777; margin: 10px 0 0 0;">— #{data[:motivational_quote][:author]}</p>
+          <p style="text-align: right; color: #777; margin: 10px 0 0 0;">— Theodore Roosevelt</p>
         </div>
         
         <p style="color: #666;">Make today count! Every habit completed is a step toward your goals.</p>
