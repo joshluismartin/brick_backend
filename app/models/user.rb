@@ -11,6 +11,7 @@ class User < ApplicationRecord
   has_many :habits, dependent: :destroy
   has_many :user_achievements, dependent: :destroy
   has_many :achievements, through: :user_achievements
+  has_one :user_notification_preference, dependent: :destroy
 
   def jwt_subject
     id

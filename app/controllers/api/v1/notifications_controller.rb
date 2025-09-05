@@ -174,22 +174,10 @@ class Api::V1::NotificationsController < Api::V1::BaseController
 
   # GET /api/v1/notifications/preferences - Get user notification preferences
   def preferences
-    # For now, return default preferences
-    # In the future, this would be stored per user in the database
-    preferences = {
-      habit_completion: true,
-      milestone_progress: true,
-      blueprint_completion: true,
-      daily_summary: true,
-      achievement_notifications: true,
-      habit_reminders: true,
-      email_frequency: 'immediate', # immediate, daily, weekly
-      reminder_time: '09:00',
-      summary_time: '18:00'
-    }
+    user_prefs = UserNotificationPreference.for_user(current_user)
     
     render_success({
-      preferences: preferences,
+      preferences: user_prefs.to_hash,
       user_email: current_user.email
     }, "Notification preferences retrieved successfully")
   end
@@ -199,30 +187,20 @@ class Api::V1::NotificationsController < Api::V1::BaseController
     # Debug: Log incoming parameters
     Rails.logger.info "Incoming notification params: #{notification_params.inspect}"
     
-    # Get current preferences (same as GET endpoint)
-    current_preferences = {
-      habit_completion: true,
-      milestone_progress: true,
-      blueprint_completion: true,
-      daily_summary: true,
-      achievement_notifications: true,
-      habit_reminders: true,
-      email_frequency: 'immediate', # immediate, daily, weekly
-      reminder_time: '09:00',
-      summary_time: '18:00'
-    }
+    user_prefs = UserNotificationPreference.for_user(current_user)
     
-    # Merge with updated preferences from params
-    updated_preferences = current_preferences.merge(notification_params.to_h.symbolize_keys)
-    
-    # Debug: Log final preferences
-    Rails.logger.info "Final updated preferences: #{updated_preferences.inspect}"
-    
-    render_success({
-      preferences: updated_preferences,
-      user_email: current_user.email,
-      updated_at: Time.current
-    }, "Notification preferences updated successfully")
+    if user_prefs.update(notification_params)
+      # Debug: Log final preferences
+      Rails.logger.info "Final updated preferences: #{user_prefs.to_hash.inspect}"
+      
+      render_success({
+        preferences: user_prefs.to_hash,
+        user_email: current_user.email,
+        updated_at: Time.current
+      }, "Notification preferences updated successfully")
+    else
+      render_error("Failed to update preferences: #{user_prefs.errors.full_messages.join(', ')}", :unprocessable_entity)
+    end
   end
 
   # GET /api/v1/notifications/history - Get email sending history

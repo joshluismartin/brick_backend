@@ -122,6 +122,8 @@ class Api::V1::HabitsController < Api::V1::BaseController
       current_streak: result[:current_streak],
       completion_rate: result[:completion_rate]
     }, "Habit marked as completed!")
+    
+    send_habit_completion_email(result[:raw_achievements])
   rescue => e
     Rails.logger.error "ERROR in mark_completed: #{e.message}"
     Rails.logger.error "ERROR backtrace: #{e.backtrace.first(5)}"
@@ -179,5 +181,26 @@ class Api::V1::HabitsController < Api::V1::BaseController
 
   def habit_params
     params.require(:habit).permit(:title, :description, :frequency, :status, :priority)
+  end
+
+  def send_habit_completion_email(achievements)
+    # Check if user has habit completion notifications enabled
+    user_prefs = UserNotificationPreference.for_user(current_user)
+    
+    if user_prefs.habit_completion
+      begin
+        result = SendgridService.send_habit_completion_email(current_user.email, @habit, achievements)
+        
+        if result[:success]
+          Rails.logger.info "✅ Sent habit completion email to #{current_user.email} for habit: #{@habit.title}"
+        else
+          Rails.logger.error "❌ Failed to send habit completion email: #{result[:error]}"
+        end
+      rescue => e
+        Rails.logger.error "❌ Error sending habit completion email: #{e.message}"
+      end
+    else
+      Rails.logger.info "📧 Habit completion email skipped - notifications disabled for #{current_user.email}"
+    end
   end
 end

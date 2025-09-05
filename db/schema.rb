@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_28_125400) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_05_154600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -124,6 +124,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_28_125400) do
     t.index ["user_id"], name: "index_user_achievements_on_user_id"
   end
 
+  create_table "user_notification_preferences", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.boolean "habit_completion", default: true
+    t.boolean "milestone_progress", default: true
+    t.boolean "blueprint_completion", default: true
+    t.boolean "daily_summary", default: true
+    t.boolean "achievement_notifications", default: true
+    t.boolean "habit_reminders", default: true
+    t.string "email_frequency", default: "immediate"
+    t.string "reminder_time", default: "09:00"
+    t.string "summary_time", default: "18:00"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_notification_preferences_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -148,4 +164,5 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_28_125400) do
   add_foreign_key "user_achievements", "habits"
   add_foreign_key "user_achievements", "milestones"
   add_foreign_key "user_achievements", "users"
+  add_foreign_key "user_notification_preferences", "users"
 end

@@ -171,6 +171,7 @@ class Habit < ApplicationRecord
       habit: self,
       message: "Congratulations! You've completed your habit: #{title}",
       achievements: earned_achievements.map(&:display_info),
+      raw_achievements: earned_achievements,
       points_earned: earned_achievements.sum { |ua| ua.achievement.points },
       current_streak: current_streak,
       completion_rate: completion_rate
