@@ -169,11 +169,6 @@ class Api::V1::CalendarController < Api::V1::BaseController
     time_of_day = params[:default_time] || "09:00"
     days_ahead = params[:days_ahead]&.to_i || 30
     
-    Rails.logger.info "=== BULK SYNC DEBUG START ==="
-    Rails.logger.info "Bulk sync params - habits: #{sync_habits}, milestones: #{sync_milestones}, force: #{force_sync}"
-    Rails.logger.info "User habits count: #{current_user.habits.count}"
-    Rails.logger.info "User milestones count: #{current_user.milestones.count}"
-    
     results = {
       habits: { success: 0, failed: 0, errors: [] },
       milestones: { success: 0, failed: 0, errors: [] }
@@ -183,26 +178,19 @@ class Api::V1::CalendarController < Api::V1::BaseController
       habits_to_sync = force_sync ? 
         current_user.habits : 
         current_user.habits.where(calendar_event_id: nil)
-      Rails.logger.info "Habits to sync (force=#{force_sync}): #{habits_to_sync.count}"
       
       habits_to_sync.find_each do |habit|
-        Rails.logger.info "Processing habit: #{habit.id} - #{habit.title}"
         start_date = Date.current
         end_date = Date.current + days_ahead.days
         
         result = @calendar_service.create_recurring_habit_events(habit, start_date, end_date, time_of_day)
-        Rails.logger.info "Habit #{habit.id} service result: #{result}"
         
         if result[:success]
           if habit.respond_to?(:calendar_event_id)
             habit.update(calendar_event_id: result[:event_id])
-            Rails.logger.info "Updated habit #{habit.id} with event_id: #{result[:event_id]}"
-          else
-            Rails.logger.warn "Habit model missing calendar_event_id column"
           end
           results[:habits][:success] += 1
         else
-          Rails.logger.error "Habit #{habit.id} failed: #{result[:error]}"
           results[:habits][:failed] += 1
           results[:habits][:errors] << { habit_id: habit.id, error: result[:error] }
         end
@@ -213,26 +201,19 @@ class Api::V1::CalendarController < Api::V1::BaseController
       milestones_to_sync = force_sync ? 
         current_user.milestones : 
         current_user.milestones.where(calendar_event_id: nil)
-      Rails.logger.info "Milestones to sync (force=#{force_sync}): #{milestones_to_sync.count}"
       
       milestones_to_sync.find_each do |milestone|
-        Rails.logger.info "Processing milestone: #{milestone.id} - #{milestone.title}"
         due_date = milestone.respond_to?(:target_date) && milestone.target_date ? 
           milestone.target_date : Date.current + 2.weeks
         
         result = @calendar_service.create_milestone_event(milestone, due_date)
-        Rails.logger.info "Milestone #{milestone.id} service result: #{result}"
         
         if result[:success]
           if milestone.respond_to?(:calendar_event_id)
             milestone.update(calendar_event_id: result[:event_id])
-            Rails.logger.info "Updated milestone #{milestone.id} with event_id: #{result[:event_id]}"
-          else
-            Rails.logger.warn "Milestone model missing calendar_event_id column"
           end
           results[:milestones][:success] += 1
         else
-          Rails.logger.error "Milestone #{milestone.id} failed: #{result[:error]}"
           results[:milestones][:failed] += 1
           results[:milestones][:errors] << { milestone_id: milestone.id, error: result[:error] }
         end
@@ -243,10 +224,8 @@ class Api::V1::CalendarController < Api::V1::BaseController
     total_failed = results[:habits][:failed] + results[:milestones][:failed]
     
     message = "Bulk sync completed: #{total_success} successful, #{total_failed} failed"
-    Rails.logger.info "=== BULK SYNC RESULT: #{message} ==="
-    Rails.logger.info "Full results: #{results}"
     
-    render_success(message, results)
+    render_success(results, message)
   end
 
   private
