@@ -196,9 +196,27 @@ class Api::V1::NotificationsController < Api::V1::BaseController
 
   # PUT /api/v1/notifications/preferences - Update notification preferences
   def update_preferences
-    # For now, just return the updated preferences
-    # In the future, this would be stored in the database
-    updated_preferences = notification_params
+    # Debug: Log incoming parameters
+    Rails.logger.info "Incoming notification params: #{notification_params.inspect}"
+    
+    # Get current preferences (same as GET endpoint)
+    current_preferences = {
+      habit_completion: true,
+      milestone_progress: true,
+      blueprint_completion: true,
+      daily_summary: true,
+      achievement_notifications: true,
+      habit_reminders: true,
+      email_frequency: 'immediate', # immediate, daily, weekly
+      reminder_time: '09:00',
+      summary_time: '18:00'
+    }
+    
+    # Merge with updated preferences from params
+    updated_preferences = current_preferences.merge(notification_params.to_h.symbolize_keys)
+    
+    # Debug: Log final preferences
+    Rails.logger.info "Final updated preferences: #{updated_preferences.inspect}"
     
     render_success({
       preferences: updated_preferences,
