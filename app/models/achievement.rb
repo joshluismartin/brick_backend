@@ -31,10 +31,10 @@ class Achievement < ApplicationRecord
   }.freeze
   
   RARITIES = {
-    'common' => { points: 10, color: '#CD7F32' },    # Bronze
-    'rare' => { points: 25, color: '#C0C0C0' },      # Silver  
-    'epic' => { points: 50, color: '#FFD700' },      # Gold
-    'legendary' => { points: 100, color: '#E6E6FA' } # Platinum
+    'common' => { points: 10, color: '#CD7F32' },    
+    'rare' => { points: 25, color: '#C0C0C0' },      
+    'epic' => { points: 50, color: '#FFD700' },      
+    'legendary' => { points: 100, color: '#E6E6FA' } 
   }.freeze
   
   # Check if criteria is met for earning this achievement

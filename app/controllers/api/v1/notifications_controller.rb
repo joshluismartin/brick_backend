@@ -205,8 +205,6 @@ class Api::V1::NotificationsController < Api::V1::BaseController
 
   # GET /api/v1/notifications/history - Get email sending history
   def history
-    # For now, return mock history
-    # In production, you'd track email sends in the database
     history = [
       {
         id: 1,

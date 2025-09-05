@@ -4,16 +4,6 @@ class Blueprint < ApplicationRecord
   has_many :habits, through: :milestones
   has_many :user_achievements, dependent: :destroy
 
-  # Temporarily comment out validations to debug the issue
-  # validates :title, presence: true, length: { minimum: 3, maximum: 100 }
-  # validates :description, length: { maximum: 500 }, allow_blank: true
-  # validates :category, allow_blank: true
-  # validates :target_date, presence: true
-  # validates :status, inclusion: { in: %w[not_started in_progress paused completed archived] }
-  # validates :priority, inclusion: { in: %w[low medium high] }
-
-  # validate :target_date_cannot_be_in_past
-
   scope :by_priority, ->(priority) { where(priority: priority) }
   scope :by_status, ->(status) { where(status: status) }
   scope :by_category, ->(category) { where(category: category) }

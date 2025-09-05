@@ -9,7 +9,6 @@ class Api::V1::RegistrationsController < Devise::RegistrationsController
 
   def respond_with(resource, _opts = {})
     if resource.persisted?
-      # Generate JWT token for the new user
       token = Warden::JWTAuth::UserEncoder.new.call(resource, :user, nil).first
       render json: {
         success: true,
