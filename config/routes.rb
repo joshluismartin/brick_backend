@@ -84,18 +84,16 @@ Rails.application.routes.draw do
       end
 
       # Email notification routes
-      namespace :notifications do
-        post :habit_completion
-        post :milestone_progress
-        post :blueprint_completion
-        post :daily_summary
-        post :achievement_notification
-        post :habit_reminder
-        post :test_email
-        get :preferences
-        put :preferences, to: "notifications#update_preferences"
-        get :history
-      end
+      post "notifications/habit_completion", to: "notifications#habit_completion"
+      post "notifications/milestone_progress", to: "notifications#milestone_progress"
+      post "notifications/blueprint_completion", to: "notifications#blueprint_completion"
+      post "notifications/daily_summary", to: "notifications#daily_summary"
+      post "notifications/achievement_notification", to: "notifications#achievement_notification"
+      post "notifications/habit_reminder", to: "notifications#habit_reminder"
+      post "notifications/test_email", to: "notifications#test_email"
+      get "notifications/preferences", to: "notifications#preferences"
+      put "notifications/preferences", to: "notifications#update_preferences"
+      get "notifications/history", to: "notifications#history"
 
       # Google Calendar integration routes
       get "calendar/events", to: "calendar#events"
