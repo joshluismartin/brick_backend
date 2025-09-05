@@ -105,14 +105,8 @@ class Api::V1::HabitsController < Api::V1::BaseController
   # POST /api/v1/blueprints/:blueprint_id/milestones/:milestone_id/habits/:id/mark_completed
   # POST /api/v1/milestones/:milestone_id/habits/:id/mark_completed
   def mark_completed
-    Rails.logger.info "DEBUG: mark_completed called for habit #{@habit.id} by user #{current_user.id}"
-    Rails.logger.info "DEBUG: Habit before completion - title: #{@habit.title}, completion_history: #{@habit.completion_history}"
-    
     # Use the model's mark_completed! method which properly handles achievements
     result = @habit.mark_completed!
-    
-    Rails.logger.info "DEBUG: mark_completed! result: #{result.keys}"
-    Rails.logger.info "DEBUG: Achievements awarded: #{result[:achievements]&.count || 0}"
     
     render_success({
       habit: result[:habit],

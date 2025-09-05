@@ -213,48 +213,43 @@ class Api::V1::AchievementsController < Api::V1::BaseController
 
   # GET /api/v1/achievements/debug - Debug endpoint to check data
   def debug
-    Rails.logger.info "DEBUG: Debug endpoint called for user #{current_user.id}"
-    
     # Check raw database data
     raw_user_achievements = UserAchievement.where(user: current_user)
     raw_achievements = Achievement.all
     
+    # Get processed data
+    processed_user_achievements = UserAchievement.for_user(current_user.id)
+                                                .includes(:achievement, :blueprint, :milestone, :habit)
+                                                .recent
+    
+    # Get stats
+    stats = UserAchievement.stats_for_user(current_user)
+    
     debug_info = {
-      current_user_id: current_user.id,
-      current_user_email: current_user.email,
+      user_id: current_user.id,
+      user_email: current_user.email,
       raw_user_achievements_count: raw_user_achievements.count,
-      raw_achievements_count: raw_achievements.count,
+      processed_user_achievements_count: processed_user_achievements.count,
+      total_achievements_in_db: raw_achievements.count,
       active_achievements_count: Achievement.active.count,
-      
-      # Raw user achievements data
-      raw_user_achievements_data: raw_user_achievements.map do |ua|
+      user_achievements_details: raw_user_achievements.map do |ua|
         {
           id: ua.id,
-          user_id: ua.user_id,
-          achievement_id: ua.achievement_id,
-          achievement_name: ua.achievement&.name,
+          achievement_name: ua.achievement.name,
           earned_at: ua.earned_at,
-          context: ua.context,
           blueprint_id: ua.blueprint_id,
           milestone_id: ua.milestone_id,
           habit_id: ua.habit_id
         }
       end,
-      
-      # Test display_info method
-      display_info_test: raw_user_achievements.first&.display_info,
-      
-      # Test scopes
-      for_user_scope_count: UserAchievement.for_user(current_user.id).count,
-      recent_scope_count: UserAchievement.for_user(current_user.id).recent.count,
-      
-      # Test includes
-      with_includes_count: UserAchievement.for_user(current_user.id)
-                                         .includes(:achievement, :blueprint, :milestone, :habit)
-                                         .count
+      stats: stats,
+      blueprints_count: current_user.blueprints.count,
+      milestones_count: current_user.milestones.count,
+      habits_count: current_user.habits.count,
+      completed_blueprints_count: current_user.blueprints.where(status: 'completed').count,
+      completed_milestones_count: current_user.milestones.where(status: 'completed').count,
+      completed_habits_count: current_user.habits.where(status: 'completed').count
     }
-    
-    Rails.logger.info "DEBUG: Debug info: #{debug_info.to_json}"
     
     render_success(debug_info, "Debug information retrieved successfully")
   end

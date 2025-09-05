@@ -1,38 +1,30 @@
 class AchievementService
   def self.check_and_award_achievements(user, context_type, context_object = nil)
-    Rails.logger.info "DEBUG: check_and_award_achievements called for user #{user.id}, context_type #{context_type}, context_object #{context_object.try(:id)}"
     return [] unless user
 
     awarded_achievements = []
     
     # Get all achievements that could be awarded
     active_achievements = Achievement.active
-    Rails.logger.info "DEBUG: Found #{active_achievements.count} active achievements"
     
     active_achievements.each do |achievement|
-      Rails.logger.info "DEBUG: Checking achievement: #{achievement.name} (#{achievement.badge_type})"
       
       if user_already_has_achievement?(user, achievement, context_object)
-        Rails.logger.info "DEBUG: User already has achievement: #{achievement.name}"
         next
       end
       
       criteria_met = achievement_criteria_met?(user, achievement, context_type, context_object)
-      Rails.logger.info "DEBUG: Criteria met for #{achievement.name}: #{criteria_met}"
       
       if criteria_met
         user_achievement = award_achievement_to_user(user, achievement, context_object)
         awarded_achievements << user_achievement if user_achievement
-        Rails.logger.info "DEBUG: Awarded achievement: #{achievement.name}"
       end
     end
     
-    Rails.logger.info "DEBUG: Total achievements awarded: #{awarded_achievements.count}"
     awarded_achievements
   end
 
   def self.award_achievement_to_user(user, achievement, context_object = nil)
-    Rails.logger.info "DEBUG: award_achievement_to_user called for user #{user.id}, achievement #{achievement.name}, context_object #{context_object.try(:id)}"
     context_attributes = {}
     
     case context_object
@@ -44,34 +36,23 @@ class AchievementService
       context_attributes[:habit] = context_object
     end
 
-    Rails.logger.info "DEBUG: Context attributes: #{context_attributes}"
-
-    # Use find_or_create_by with only the fields that have the unique constraint
     user_achievement = UserAchievement.find_or_create_by(
       user: user,
       achievement: achievement
     ) do |ua|
       ua.earned_at = Time.current
-      Rails.logger.info "DEBUG: Creating new UserAchievement with earned_at: #{ua.earned_at}"
       # Set context attributes on creation
       context_attributes.each { |key, value| ua.send("#{key}=", value) }
     end
 
-    Rails.logger.info "DEBUG: UserAchievement after find_or_create_by - ID: #{user_achievement.id}, persisted: #{user_achievement.persisted?}"
-
     # If the record already existed, update context attributes if they're different
     if context_attributes.any?
       needs_update = context_attributes.any? { |key, value| user_achievement.send(key) != value }
-      Rails.logger.info "DEBUG: Needs context update: #{needs_update}"
       if needs_update
-        Rails.logger.info "DEBUG: Updating context attributes: #{context_attributes}"
-        result = user_achievement.update!(context_attributes)
-        Rails.logger.info "DEBUG: Context update result: #{result}"
+        user_achievement.update!(context_attributes)
       end
     end
 
-    Rails.logger.info "DEBUG: Final UserAchievement - ID: #{user_achievement.id}, Achievement: #{user_achievement.achievement.name}, User: #{user_achievement.user_id}, Earned: #{user_achievement.earned_at}"
-    Rails.logger.info "Achievement awarded: #{achievement.name} to user #{user.id}"
     user_achievement
   rescue ActiveRecord::RecordInvalid => e
     Rails.logger.warn "Failed to award achievement #{achievement.name}: #{e.message}"
@@ -82,7 +63,6 @@ class AchievementService
   private
 
   def self.user_already_has_achievement?(user, achievement, context_object = nil)
-    Rails.logger.info "DEBUG: user_already_has_achievement? called for user #{user.id}, achievement #{achievement.name}, context_object #{context_object.try(:id)}"
     query = UserAchievement.where(user: user, achievement: achievement)
     
     # For context-specific achievements, check if they already have it for this context
@@ -95,13 +75,10 @@ class AchievementService
       query = query.where(habit: context_object)
     end
     
-    result = query.exists?
-    Rails.logger.info "DEBUG: User already has achievement? #{result}"
-    result
+    query.exists?
   end
 
   def self.achievement_criteria_met?(user, achievement, context_type, context_object = nil)
-    Rails.logger.info "DEBUG: achievement_criteria_met? called for user #{user.id}, achievement #{achievement.name}, context_type #{context_type}, context_object #{context_object.try(:id)}"
     criteria = achievement.criteria
     
     case achievement.badge_type
@@ -119,17 +96,13 @@ class AchievementService
   end
 
   def self.check_habit_streak_criteria(user, criteria, context_object = nil)
-    Rails.logger.info "DEBUG: check_habit_streak_criteria called for user #{user.id}, criteria #{criteria}, context_object #{context_object.try(:id)}"
     required_streak = criteria['streak_days'] || 7
-    Rails.logger.info "DEBUG: Checking habit streak - required: #{required_streak}"
     
     # Special case for "First Steps" achievement (streak_days = 1)
     # Award immediately when habit is completed for the first time
     if required_streak == 1 && context_object.is_a?(Habit)
       # Check if this habit has any completions (including today)
       has_completions = context_object.completion_history.any?
-      Rails.logger.info "DEBUG: First Steps check - habit has completions: #{has_completions}"
-      Rails.logger.info "DEBUG: Habit completion history: #{context_object.completion_history}"
       return has_completions
     end
     
@@ -138,9 +111,7 @@ class AchievementService
     when Habit
       # Check specific habit streak using enhanced tracking
       current_streak = context_object.current_streak
-      Rails.logger.info "DEBUG: Habit #{context_object.title} current streak: #{current_streak}"
       result = current_streak >= required_streak
-      Rails.logger.info "DEBUG: Habit streak check result: #{result}"
       result
     when Blueprint, Milestone
       # For blueprint/milestone context, check if user has any habits with required streak
@@ -152,34 +123,27 @@ class AchievementService
   end
 
   def self.check_milestone_progress_criteria(user, criteria, context_object = nil)
-    Rails.logger.info "DEBUG: check_milestone_progress_criteria called for user #{user.id}, criteria #{criteria}, context_object #{context_object.try(:id)}"
     required_percentage = criteria['progress_percentage'] || 50
-    Rails.logger.info "DEBUG: Checking milestone progress - required: #{required_percentage}%"
     
     case context_object
     when Milestone
       # Check specific milestone progress
       current_progress = context_object.progress_percentage
-      Rails.logger.info "DEBUG: Milestone #{context_object.title} progress: #{current_progress}%"
       result = current_progress >= required_percentage
-      Rails.logger.info "DEBUG: Milestone progress check result: #{result}"
       result
     when Blueprint
       # Check if blueprint has milestones meeting criteria
       blueprint_milestones = context_object.milestones
       result = blueprint_milestones.any? { |milestone| milestone.progress_percentage >= required_percentage }
-      Rails.logger.info "DEBUG: Blueprint milestone progress check result: #{result}"
       result
     else
       # Check any milestone progress for the user
       result = user.milestones.any? { |milestone| milestone.progress_percentage >= required_percentage }
-      Rails.logger.info "DEBUG: User milestone progress check result: #{result}"
       result
     end
   end
 
   def self.check_blueprint_completion_criteria(user, criteria, context_object = nil)
-    Rails.logger.info "DEBUG: check_blueprint_completion_criteria called for user #{user.id}, criteria #{criteria}, context_object #{context_object.try(:id)}"
     required_count = criteria['required_count'] || 1
     
     case context_object
@@ -206,7 +170,6 @@ class AchievementService
   end
 
   def self.check_special_criteria(user, criteria, context_type = nil)
-    Rails.logger.info "DEBUG: check_special_criteria called for user #{user.id}, criteria #{criteria}, context_type #{context_type}"
     case criteria['type']
     when 'first_habit'
       user.habits.count >= 1
@@ -233,9 +196,8 @@ class AchievementService
       
       daily_habits.all? { |habit| habit.current_streak >= 7 }
     when 'comeback_kid'
-      # Completed a habit after being overdue
+      # User completed a habit after a break (had completions, then gap, then completed again)
       user.habits.any? { |habit| 
-        habit.completion_history.count > 0 && 
         habit.completed_in_current_period? && 
         habit.completion_history.count > 1 # Had previous completions
       }
@@ -246,25 +208,21 @@ class AchievementService
 
   # Check for habit-related achievements
   def self.check_habit_achievements(user, habit)
-    Rails.logger.info "DEBUG: check_habit_achievements called for user #{user.id}, habit #{habit.id}"
     check_and_award_achievements(user, 'habit', habit)
   end
 
   # Check for milestone-related achievements
   def self.check_milestone_achievements(user, milestone)
-    Rails.logger.info "DEBUG: check_milestone_achievements called for user #{user.id}, milestone #{milestone.id}"
     check_and_award_achievements(user, 'milestone', milestone)
   end
 
   # Check for blueprint-related achievements
   def self.check_blueprint_achievements(user, blueprint)
-    Rails.logger.info "DEBUG: check_blueprint_achievements called for user #{user.id}, blueprint #{blueprint.id}"
     check_and_award_achievements(user, 'blueprint', blueprint)
   end
 
   # Seed default achievements
   def self.seed_default_achievements!
-    Rails.logger.info "DEBUG: seed_default_achievements! called"
     default_achievements = [
       # Habit Streak Achievements
       {

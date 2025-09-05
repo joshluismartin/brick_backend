@@ -35,32 +35,28 @@ class Api::V1::BlueprintsController < Api::V1::BaseController
     blueprint = current_user.blueprints.build(blueprint_params)
     
     if blueprint.save
-      Rails.logger.info "DEBUG: Blueprint created successfully, checking achievements..."
-      
       # Quick check if achievements exist
       total_achievements = Achievement.count
       active_achievements = Achievement.active.count
-      Rails.logger.info "DEBUG: Total achievements in DB: #{total_achievements}, Active: #{active_achievements}"
       
       if active_achievements == 0
         Rails.logger.warn "WARNING: No active achievements found! You need to seed achievements first."
-        Rails.logger.warn "Run: POST /api/v1/achievements/seed"
+        Rails.logger.warn "Run: AchievementService.seed_default_achievements!"
       end
       
       # Check for achievements
       awarded_achievements = AchievementService.check_blueprint_achievements(current_user, blueprint)
-      Rails.logger.info "DEBUG: Achievement check complete, awarded: #{awarded_achievements.count}"
       
       # Verify achievements were actually saved
       user_achievement_count = UserAchievement.where(user: current_user).count
-      Rails.logger.info "DEBUG: Total user achievements in DB after creation: #{user_achievement_count}"
       
       render_success({
         blueprint: blueprint_json(blueprint),
-        achievements: awarded_achievements.map(&:display_info)
-      }, "Blueprint created successfully", :created)
+        achievements: awarded_achievements.map(&:display_info),
+        points_earned: awarded_achievements.sum { |ua| ua.achievement.points }
+      }, "Blueprint created successfully!")
     else
-      render_error("Failed to create blueprint: #{blueprint.errors.full_messages.join(', ')}", :unprocessable_entity)
+      render_error(blueprint.errors.full_messages.join(', '))
     end
   end
 
